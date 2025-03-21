@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일상 타임라인</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        :root {
+            --background: #f6f6f6;
+            --text: #666666;
+            --bold: #444444;
+            --accent: #bbbbbb;
+            --accent-hover: #999999;
+            --posts: #ffffff;
+            --borders: #eeeeee;
+            --timeline: #bbbbbb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--background);
+            color: #666666;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            font-weight: 400;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: var(--bold);
+            margin: 60px 0 20px;  /* 상단 여백 3배로 증가 */
+            text-align: center;
+            font-weight: 700;
+            position: relative;  /* 편집 아이콘 위치 기준점 */
+        }
+        
+        .edit-title {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 10px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: #999;
+            font-size: 16px;
+        }
+        
+        h1:hover .edit-title {
+            opacity: 1;
+        }
+        
+        /* 빈 타임라인 메시지 */
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .no-results h2 {
+            font-size: 20px;
+            color: var(--bold);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .no-results p {
+            color: var(--text);
+            font-size: 16px;
+        }
+        
+        /* 가이드 말풍선 */
+        .guide-bubble {
+            background: #f5f9ff;
+            border: 1px solid #dbe7fb;
+            border-radius: 8px;
+            padding: 15px 20px;
+            position: relative;
+            margin-bottom: 30px;
+            animation: fadeIn 0.5s;
+        }
+        
+        .guide-bubble::after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 30px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: #dbe7fb transparent transparent;
+        }
+        
+        .guide-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #aab8d4;
+        }
+
+        /* Timeline Container */
+        .timeline-container {
+            position: relative;
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+
+        /* Vertical Timeline Line */
+        .timeline-container::before {
+            content: "";
+            position: absolute;
+            width: 2px;
+            background: var(--timeline);
+            top: 0;
+            bottom: 0;
+            left: 120px;
+        }
+
+        /* Timeline Entry */
+        .timeline-entry {
+            position: relative;
+            margin-bottom: 30px;
+            display: flex;
+        }
+
+        /* Date Box */
+        .date-box {
+            width: 100px;
+            min-width: 100px;
+            text-align: right;
+            padding-right: 20px;
+        }
+
+        /* Year Box */
+        .year {
+            color: var(--bold);
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 5px;
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            transition: opacity 0.3s, height 0.3s;
+        }
+        
+        .year.visible {
+            opacity: 1;
+            height: auto;
+            margin-bottom: 8px;
+        }
+
+        .date {
+            color: var(--bold);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .day {
+            font-size: 12px;
+            color: var(--text);
+            font-weight: 400;
+        }
+        
+        /* 토요일, 일요일 색상 */
+        .day.saturday {
+            color: #4a90e2; /* 모던한 파란색 */
+        }
+        
+        .day.sunday {
+            color: #e25c5c; /* 모던한 붉은색 */
+        }
+
+        /* Entry Dot */
+        .entry-dot {
+            position: absolute;
+            left: 113px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 3px solid var(--background);
+            top: 5px;
+            z-index: 1;
+        }
+
+        /* Content Box */
+        .content-box {
+            margin-left: 40px;
+            background: var(--posts);
+            border: 1px solid var(--borders);
+            border-radius: 5px;
+            padding: 15px;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        /* Delete Button */
+        .content-box {
+            position: relative;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            line-height: 18px;
+            text-align: center;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.2s ease-out;
+            z-index: 5;
+            border: 2px solid white;
+        }
+        
+        .content-box:hover .delete-btn {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .delete-btn:hover {
+            background: #e25c5c;
+        }
+
+        /* Content Triangle */
+        .content-box::before {
+            content: "";
+            position: absolute;
+            left: -10px;
+            top: 10px;
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent var(--borders) transparent transparent;
+        }
+
+        /* Content Styling */
+        .content {
+            font-weight: 400;
+            line-height: 1.6;
+        }
+
+        /* Hashtags */
+        .hashtags {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .hashtag {
+            display: inline-block;
+            background-color: var(--accent);
+            color: #fff;
+            padding: 3px 6px 1px 6px;
+            border-radius: 4px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .hashtag:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* Entry Form */
+        .entry-form-container {
+            background: var(--posts);
+            border: 1px solid var(--borders);
+            border-radius: 5px;
+            margin-bottom: 30px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out, opacity 0.3s ease-out;
+            opacity: 0;
+            padding: 0;
+            border-width: 0;
+        }
+
+        .entry-form-container.open {
+            max-height: 500px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-width: 1px;
+            opacity: 1;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--bold);
+        }
+
+        input[type="date"], 
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--borders);
+            border-radius: 4px;
+            font-family: 'Pretendard', sans-serif;
+            font-size: 14px;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--borders);
+            border-radius: 4px;
+            font-family: 'Pretendard', sans-serif;
+            font-size: 14px;
+        }
+
+        /* Controls */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        /* 버튼 스타일 */
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-family: 'Pretendard', sans-serif;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+        
+        .danger-btn {
+            background: #e0e0e0;
+            color: #666;
+        }
+        
+        .danger-btn:hover {
+            background: #e25c5c;
+            color: white;
+        }
+        
+        /* 정렬 버튼 */
+        .sort-btn {
+            display: flex;
+            align-items: center;
+        }
+        
+        .sort-btn i {
+            margin-left: 5px;
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+        
+        .sort-btn.asc i {
+            transform: rotate(180deg);
+        }
+
+        /* 태그 필터 영역 */
+        .tags-container {
+            background: var(--posts);
+            border: 1px solid var(--borders);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+            max-height: 60px;
+        }
+        
+        .tags-container.expanded {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .tags-title {
+            margin-right: 10px;
+            font-weight: 600;
+            color: var(--bold);
+            margin-bottom: 5px;
+        }
+        
+        .tag-filter {
+            background-color: var(--background);
+            color: var(--text);
+            padding: 3px 6px 1px 6px;
+            border-radius: 4px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+        
+        .tag-filter:hover {
+            border-color: var(--accent);
+        }
+        
+        .tag-filter.active {
+            background-color: var(--accent);
+            color: #fff;
+        }
+        
+        .toggle-tags {
+            margin-left: auto;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+        
+        /* 월별 네비게이션 */
+        .month-nav {
+            display: flex;
+            background: var(--posts);
+            border: 1px solid var(--borders);
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            white-space: nowrap;
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        
+        .month-nav::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .month-tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-right: 1px solid var(--borders);
+            transition: background 0.3s;
+        }
+        
+        .month-tab:last-child {
+            border-right: none;
+        }
+        
+        .month-tab:hover {
+            background: var(--background);
+        }
+        
+        .month-tab.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* File Input Styling */
+        .file-input {
+            display: none;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .timeline-entry {
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        /* Animation delay for cascade effect */
+        .timeline-entry:nth-child(1) { animation-delay: 0.1s; }
+        .timeline-entry:nth-child(2) { animation-delay: 0.2s; }
+        .timeline-entry:nth-child(3) { animation-delay: 0.3s; }
+        .timeline-entry:nth-child(4) { animation-delay: 0.4s; }
+        .timeline-entry:nth-child(5) { animation-delay: 0.5s; }
+
+        /* 모바일 반응형 */
+        @media (max-width: 768px) {
+            .timeline-container::before {
+                left: 20px;
+            }
+            
+            .timeline-entry {
+                flex-direction: column;
+            }
+            
+            .date-box {
+                width: 100%;
+                text-align: left;
+                padding-left: 40px;
+                margin-bottom: 5px;
+                display: flex;
+                align-items: baseline;
+            }
+            
+            .date {
+                margin-right: 5px;
+            }
+            
+            .entry-dot {
+                left: 13px;
+                top: 22px;
+            }
+            
+            .content-box {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .controls {
+                flex-direction: column;
+                right: 10px;
+                bottom: 10px;
+            }
+            
+            button {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .tags-container {
+                padding: 10px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+            
+            .tags-title, .toggle-tags {
+                width: auto;
+                margin-bottom: 5px;
+            }
+            
+            .month-nav {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 id="timeline-title">일상 타임라인<span class="edit-title">✎</span></h1>
+    
+    <div class="guide-bubble" id="guideBubble">
+        타임라인에 일상의 소중한 순간들을 기록해보세요. 하단의 "기록 추가하기" 버튼을 클릭하면 새로운 기억을 저장할 수 있습니다.
+        <span class="guide-close" id="closeGuide">✕</span>
+    </div>
+    
+    <div class="month-nav" id="monthNav">
+        <!-- 월별 탭이 자동으로 생성됩니다 -->
+    </div>
+    
+    <div class="tags-container" id="tagsContainer">
+        <span class="tags-title">태그:</span>
+        <!-- 태그 필터가 자동으로 생성됩니다 -->
+        <span class="toggle-tags" id="toggleTags">더 보기 ▼</span>
+    </div>
+    
+    <div class="entry-form-container" id="entryForm">
+        <div class="form-group">
+            <label for="entryDate">날짜</label>
+            <input type="date" id="entryDate" required>
+        </div>
+        <div class="form-group">
+            <label for="entryContent">내용</label>
+            <textarea id="entryContent" placeholder="오늘 있었던 일을 기록해보세요..." required></textarea>
+        </div>
+        <div class="form-group">
+            <label for="entryTags">해시태그 (쉼표로 구분)</label>
+            <input type="text" id="entryTags" placeholder="행복, 일상, 성취">
+        </div>
+        <button id="saveEntry">저장하기</button>
+    </div>
+    
+    <div class="timeline-container" id="timeline">
+        <!-- 타임라인 항목이 자동으로 생성됩니다 -->
+    </div>
+    
+    <div class="controls">
+        <button id="export-btn">데이터 내보내기</button>
+        <button id="import-btn">데이터 가져오기</button>
+        <input type="file" id="file-input" class="file-input" accept=".json">
+        <button id="sort-btn" class="sort-btn">최신순 <i>▼</i></button>
+        <button id="add-entry-btn">기록 추가하기</button>
+        <button id="clear-all-btn" class="danger-btn">모두 삭제</button>
+    </div>
+
+    <script>
+        // 타임라인 데이터 및 설정
+        let timelineData = [
+            {
+                date: "2025-03-22",
+                day: "토요일",
+                content: "왜 하나를 고치면 다른 찐빠들이 여럿 생기는거니 댕청한클로드야",
+                hashtags: ["피로", "새벽4시", "과몰입"]
+            },
+            {
+                date: "2025-03-21",
+                day: "금요일",
+                content: "회사 발표를 마쳤다. 팀원들의 반응이 좋았다! 저녁에는 우주 탐사에 관한 다큐멘터리를 보면서 현재 내 도전들에 대해 좀 더 넓은 시각을 가지게 되었다.",
+                hashtags: ["업무", "성취", "우주"]
+            },
+            {
+                date: "2025-01-15",
+                day: "수요일",
+                content: "친구 Sam과 커피 마시며 만났다. 미래 목표에 대한 대화가 정말 영감을 주었다. 몇 달 동안 생각해왔던 사이드 프로젝트를 시작하기로 결정했다.",
+                hashtags: ["친구", "영감", "계획"]
+            }
+        ];
+        
+        // 사이트 설정 - 제목 등 저장
+        let siteSettings = {
+            title: "일상 타임라인",
+            sortAscending: false
+        };
+        
+        // 현재 활성화된 필터
+        let activeFilter = null;
+
+        // Function to render the timeline
+        function renderTimeline(data, filterTag = null) {
+            const timelineEl = document.getElementById('timeline');
+            timelineEl.innerHTML = '';
+            
+            // 필터링 (태그가 지정된 경우)
+            let filteredData = data;
+            if (filterTag) {
+                filteredData = data.filter(entry => 
+                    entry.hashtags.includes(filterTag)
+                );
+            }
+            
+            // 정렬 (오름차순 또는 내림차순)
+            if (siteSettings.sortAscending) {
+                filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            } else {
+                filteredData.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+            
+            let lastYear = null;
+            
+            filteredData.forEach((entry, index) => {
+                const entryEl = document.createElement('div');
+                entryEl.className = 'timeline-entry';
+                entryEl.dataset.entryId = index;
+                
+                // Get date components
+                const dateObj = new Date(entry.date);
+                const year = dateObj.getFullYear();
+                
+                // Format date for display (e.g., "3월 22일")
+                const displayDate = dateObj.toLocaleDateString('ko-KR', {
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                // 요일 표시 및 클래스 지정 (토/일 색상 적용)
+                const dayOfWeek = dateObj.getDay(); // 0: 일요일, 6: 토요일
+                let dayClass = '';
+                
+                if (dayOfWeek === 0) dayClass = 'sunday';
+                else if (dayOfWeek === 6) dayClass = 'saturday';
+                
+                // Create hashtag elements
+                const hashtagsHTML = entry.hashtags.map(tag => 
+                    `<span class="hashtag">#${tag}</span>`
+                ).join('');
+                
+                // Check if we need to show the year (first entry or year changed)
+                const showYear = (lastYear !== year);
+                lastYear = year;
+                
+                entryEl.innerHTML = `
+                    <div class="date-box">
+                        <div class="year ${showYear ? 'visible' : ''}">${year}</div>
+                        <div class="date">${displayDate}</div>
+                        <div class="day ${dayClass}">${entry.day}</div>
+                    </div>
+                    <div class="entry-dot"></div>
+                    <div class="content-box">
+                        <div class="delete-btn" data-index="${index}">✕</div>
+                        <div class="content">${entry.content}</div>
+                        <div class="hashtags">${hashtagsHTML}</div>
+                    </div>
+                `;
+                
+                timelineEl.appendChild(entryEl);
+            });
+            
+            // 삭제 버튼 이벤트 연결
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.dataset.index);
+                    deleteEntry(index);
+                });
+            });
+            
+            // 필터링된 결과가 없을 경우 메시지 표시
+            if (filteredData.length === 0 && filterTag) {
+                timelineEl.innerHTML = `
+                    <div class="no-results">
+                        <h2>"${filterTag}" 태그가 포함된 기록이 없습니다</h2>
+                        <p>다른 태그를 선택하거나 새 기록을 추가해보세요.</p>
+                    </div>
+                `;
+            } else if (filteredData.length === 0) {
+                timelineEl.innerHTML = `
+                    <div class="no-results">
+                        <h2>기록이 없습니다</h2>
+                        <p>하단의 "기록 추가하기" 버튼을 눌러 첫 번째 기록을 남겨보세요.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 태그와 월별 탭 초기화 함수
+        function initializeFilters() {
+            renderTagFilters();
+            renderMonthTabs();
+            
+            // 태그 더 보기/접기 토글
+            document.getElementById('toggleTags').addEventListener('click', function() {
+                const container = document.getElementById('tagsContainer');
+                container.classList.toggle('expanded');
+                this.textContent = container.classList.contains('expanded') ? '접기 ▲' : '더 보기 ▼';
+            });
+        }
+        
+        // 모든 태그를 추출하고 필터를 렌더링하는 함수
+        function renderTagFilters() {
+            const tagsContainer = document.getElementById('tagsContainer');
+            const tagsTitle = tagsContainer.querySelector('.tags-title');
+            const toggleButton = tagsContainer.querySelector('.toggle-tags');
+            
+            // 기존 태그 필터 제거 (제목과 토글 버튼 제외)
+            Array.from(tagsContainer.children).forEach(child => {
+                if (!child.classList.contains('tags-title') && !child.classList.contains('toggle-tags')) {
+                    child.remove();
+                }
+            });
+            
+            // 모든 고유 태그 추출
+            const allTags = new Set();
+            timelineData.forEach(entry => {
+                entry.hashtags.forEach(tag => allTags.add(tag));
+            });
+            
+            // 태그가 없으면 컨테이너 숨기기
+            if (allTags.size === 0) {
+                tagsContainer.style.display = 'none';
+                return;
+            } else {
+                tagsContainer.style.display = 'flex';
+            }
+            
+            // 태그 필터 요소 생성
+            const fragment = document.createDocumentFragment();
+            Array.from(allTags).sort().forEach(tag => {
+                const tagEl = document.createElement('span');
+                tagEl.className = `tag-filter ${activeFilter === tag ? 'active' : ''}`;
+                tagEl.textContent = '#' + tag;
+                tagEl.dataset.tag = tag;
+                tagEl.addEventListener('click', function() {
+                    // 이미 활성화된 태그를 다시 클릭하면 필터 제거
+                    if (activeFilter === tag) {
+                        activeFilter = null;
+                        document.querySelectorAll('.tag-filter').forEach(t => t.classList.remove('active'));
+                    } else {
+                        activeFilter = tag;
+                        document.querySelectorAll('.tag-filter').forEach(t => {
+                            if (t.dataset.tag === tag) {
+                                t.classList.add('active');
+                            } else {
+                                t.classList.remove('active');
+                            }
+                        });
+                    }
+                    renderTimeline(timelineData, activeFilter);
+                });
+                fragment.appendChild(tagEl);
+            });
+            
+            // 태그 필터 삽입 (토글 버튼 앞에)
+            tagsContainer.insertBefore(fragment, toggleButton);
+        }
+        
+        // 월별 탭 생성 함수
+        function renderMonthTabs() {
+            const monthNav = document.getElementById('monthNav');
+            monthNav.innerHTML = '';
+            
+            // 월별 데이터 그룹화
+            const monthGroups = {};
+            
+            timelineData.forEach(entry => {
+                const date = new Date(entry.date);
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const key = `${year}-${month}`;
+                
+                if (!monthGroups[key]) {
+                    monthGroups[key] = {
+                        year,
+                        month,
+                        label: date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' }),
+                        shortLabel: date.toLocaleDateString('ko-KR', { month: 'long' }),
+                        entries: []
+                    };
+                }
+                
+                monthGroups[key].entries.push(entry);
+            });
+            
+            // 월별 탭이 없으면 네비게이션 숨기기
+            if (Object.keys(monthGroups).length === 0) {
+                monthNav.style.display = 'none';
+                return;
+            } else {
+                monthNav.style.display = 'flex';
+            }
+            
+            // 시간순으로 정렬 (최신순)
+            const sortedMonths = Object.values(monthGroups).sort((a, b) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.month - a.month;
+            });
+            
+            // 현재 표시 중인 연도 추적
+            let currentYear = null;
+            
+            // 월별 탭 생성
+            sortedMonths.forEach(group => {
+                const tabEl = document.createElement('div');
+                tabEl.className = 'month-tab';
+                
+                // 연도가 바뀔 때만 연도 표시
+                if (currentYear !== group.year) {
+                    tabEl.textContent = group.label; // 연도 포함 라벨
+                    currentYear = group.year;
+                } else {
+                    tabEl.textContent = group.shortLabel; // 월만 표시
+                }
+                
+                tabEl.dataset.year = group.year;
+                tabEl.dataset.month = group.month;
+                
+                tabEl.addEventListener('click', function() {
+                    // 해당 월의 첫 번째 항목으로 스크롤
+                    const firstEntryForMonth = document.querySelector(`.timeline-entry[data-entry-id="${timelineData.indexOf(group.entries[0])}"]`);
+                    if (firstEntryForMonth) {
+                        firstEntryForMonth.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    
+                    // 탭 활성화 상태 변경
+                    document.querySelectorAll('.month-tab').forEach(tab => tab.classList.remove('active'));
+                    tabEl.classList.add('active');
+                });
+                
+                monthNav.appendChild(tabEl);
+            });
+        }
+
+        // 항목 삭제 함수
+        function deleteEntry(index) {
+            if (confirm('이 기록을 삭제하시겠습니까?')) {
+                timelineData.splice(index, 1);
+                renderTimeline(timelineData, activeFilter);
+                renderTagFilters();
+                renderMonthTabs();
+                
+                // 모든 데이터가 삭제된 경우 가이드 표시
+                if (timelineData.length === 0) {
+                    document.getElementById('guideBubble').style.display = 'block';
+                }
+            }
+        }
+
+        // 모든 항목 삭제 함수
+        function clearAllEntries() {
+            if (confirm('모든 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                timelineData = [];
+                renderTimeline(timelineData);
+                renderTagFilters();
+                renderMonthTabs();
+                
+                // 가이드 표시
+                document.getElementById('guideBubble').style.display = 'block';
+            }
+        }
+
+        // 제목 수정 기능
+        document.querySelector('.edit-title').addEventListener('click', function() {
+            const titleEl = document.getElementById('timeline-title');
+            const currentTitle = siteSettings.title;
+            
+            const newTitle = prompt('타임라인 제목을 입력하세요:', currentTitle);
+            if (newTitle !== null && newTitle.trim() !== '') {
+                siteSettings.title = newTitle.trim();
+                titleEl.innerHTML = siteSettings.title + '<span class="edit-title">✎</span>';
+            }
+        });
+        
+        // 가이드 닫기
+        document.getElementById('closeGuide').addEventListener('click', function() {
+            document.getElementById('guideBubble').style.display = 'none';
+        });
+
+        // Export functionality
+        document.getElementById('export-btn').addEventListener('click', function() {
+            // 현재 날짜/시간을 파일명에 포함
+            const now = new Date();
+            const dateStr = now.toISOString().replace(/[:.]/g, '-').replace('T', '_').split('Z')[0];
+            const filename = `timeline-data_${dateStr}.json`;
+            
+            // 타임라인 데이터와 사이트 설정을 함께 저장
+            const exportData = {
+                settings: siteSettings,
+                entries: timelineData
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Import functionality
+        document.getElementById('import-btn').addEventListener('click', function() {
+            document.getElementById('file-input').click();
+        });
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // 새 형식과 이전 형식 모두 지원
+                    if (importedData.settings && importedData.entries) {
+                        siteSettings = importedData.settings;
+                        timelineData = importedData.entries;
+                    } else {
+                        // 이전 형식 (entries만 있는 경우)
+                        timelineData = importedData;
+                    }
+                    
+                    // UI 업데이트
+                    document.getElementById('timeline-title').innerHTML = 
+                        siteSettings.title + '<span class="edit-title">✏️</span>';
+                    
+                    initializeFilters();
+                    renderTimeline(timelineData, activeFilter);
+                    
+                    // 정렬 버튼 상태 업데이트
+                    updateSortButtonState();
+                    
+                    alert('데이터를 성공적으로 가져왔습니다!');
+                } catch (error) {
+                    alert('데이터 가져오기 오류. JSON 파일을 확인해주세요.');
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // 정렬 순서 전환 버튼
+        document.getElementById('sort-btn').addEventListener('click', function() {
+            siteSettings.sortAscending = !siteSettings.sortAscending;
+            updateSortButtonState();
+            renderTimeline(timelineData, activeFilter);
+        });
+        
+        // 정렬 버튼 상태 업데이트
+        function updateSortButtonState() {
+            const sortBtn = document.getElementById('sort-btn');
+            if (siteSettings.sortAscending) {
+                sortBtn.classList.add('asc');
+                sortBtn.innerHTML = '오래된순 <i>▼</i>';
+            } else {
+                sortBtn.classList.remove('asc');
+                sortBtn.innerHTML = '최신순 <i>▼</i>';
+            }
+        }
+
+        // Toggle entry form
+        document.getElementById('add-entry-btn').addEventListener('click', function() {
+            const formContainer = document.getElementById('entryForm');
+            formContainer.classList.toggle('open');
+            
+            // Set today's date as default
+            if (formContainer.classList.contains('open')) {
+                const today = new Date();
+                document.getElementById('entryDate').valueAsDate = today;
+            }
+        });
+        
+        // Save new entry
+        document.getElementById('saveEntry').addEventListener('click', function() {
+            const dateInput = document.getElementById('entryDate');
+            const contentInput = document.getElementById('entryContent');
+            const tagsInput = document.getElementById('entryTags');
+            
+            // Validate inputs
+            if (!dateInput.value || !contentInput.value) {
+                alert('날짜와 내용을 입력해주세요.');
+                return;
+            }
+            
+            // Create new entry
+            const dateObj = new Date(dateInput.value);
+            const newEntry = {
+                date: dateInput.value,
+                day: dateObj.toLocaleDateString('ko-KR', { weekday: 'long' }),
+                content: contentInput.value,
+                hashtags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag)
+            };
+            
+            // Add to data array
+            timelineData.unshift(newEntry);
+            
+            // 필터와 월별 탭 업데이트
+            initializeFilters();
+            
+            // Render timeline and reset form
+            renderTimeline(timelineData, activeFilter);
+            contentInput.value = '';
+            tagsInput.value = '';
+            
+            // Close the form
+            document.getElementById('entryForm').classList.remove('open');
+            
+            // 가이드 말풍선 숨기기
+            document.getElementById('guideBubble').style.display = 'none';
+        });
+        
+        // 모두 삭제 버튼
+        document.getElementById('clear-all-btn').addEventListener('click', clearAllEntries);
+
+        // 초기화 함수 실행
+        initializeFilters();
+        renderTimeline(timelineData);
+        
+        // 가이드 표시 여부 결정
+        if (timelineData.length === 0) {
+            document.getElementById('guideBubble').style.display = 'block';
+        } else {
+            document.getElementById('guideBubble').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
